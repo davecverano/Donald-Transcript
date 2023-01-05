@@ -10,7 +10,7 @@ import tempfile
 app = FastAPI()
 
 origins = [
-    "http://localhost:3000",
+    "https://donald-transcription.uk.r.appspot.com",
 ]
 
 app.add_middleware(

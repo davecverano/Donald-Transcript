@@ -21,7 +21,7 @@ const Upload = () => {
 		const formData = new FormData();
 		formData.append('File', selectedFile);
 
-		await axios.post('http://localhost:8000/transcribe', formData)
+		await axios.post('https://server-dot-donald-transcription.uk.r.appspot.com/transcribe', formData)
 			.then((response) => setDownload(response.data))
         setLoading(false)
 	};
