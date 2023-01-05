@@ -1,0 +1,5 @@
+runtime: python37
+env: standard
+service: server
+instance_class: F4
+entrypoint: python -m gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker

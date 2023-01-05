@@ -1,0 +1,20 @@
+# [START runtime]
+runtime: nodejs14
+env: standard
+
+
+# [END runtime]
+
+# [START handlers]
+handlers:
+  - url: /static
+    static_dir: build/static
+    secure: always
+  - url: /(.*\.(json|ico|js))$
+    static_files: build/\1
+    upload: build/.*\.(json|ico|js)$
+    secure: always
+  - url: .*
+    static_files: build/index.html
+    upload: build/index.html
+    secure: always
