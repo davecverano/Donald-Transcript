@@ -1,5 +1,3 @@
-from google.cloud import bigquery
-from google.oauth2 import service_account
 from fastapi import FastAPI, Request, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -43,7 +41,6 @@ async def Transcribe(request: Request):
     os.unlink(path)
 
     return transcription
-
 
 
     

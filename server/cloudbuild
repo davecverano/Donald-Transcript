@@ -1,0 +1,5 @@
+steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args: ['-c', 'apt-get update && apt-get install -y ffmpeg && gcloud config set app/cloud_build_timeout 1800 && gcloud app deploy']
+timeout: '1800s'
