@@ -1,73 +1,77 @@
 import axios from 'axios'
-import { useState, useRef } from 'react'
-import loading_Gif from './resources/loading.gif'
+import { useState } from 'react'
+import loadingGif from './resources/loading.gif'
+
+// Transcription API; override with REACT_APP_API_URL in a .env file for local development.
+const API_URL = process.env.REACT_APP_API_URL || 'https://server-dot-donald-transcription.uk.r.appspot.com'
 
 const Upload = () => {
+    const [selectedFile, setSelectedFile] = useState(null)
+    const [loading, setLoading] = useState(false)
+    const [transcript, setTranscript] = useState(null)
+    const [error, setError] = useState(null)
 
-    const [selectedFile, setSelectedFile] = useState();
-    const [isFilePicked, setIsFilePicked] = useState(false);
-    const [loading,setLoading] = useState(false)
-	const [download, setDownload] = useState(null)
-    
+    const handleSubmission = async (e) => {
+        e.preventDefault()
+        if (!selectedFile) {
+            setError('Choose an audio or video file first.')
+            return
+        }
+        setError(null)
+        setTranscript(null)
+        setLoading(true)
+        const formData = new FormData()
+        formData.append('File', selectedFile)
+        try {
+            const response = await axios.post(`${API_URL}/transcribe`, formData)
+            setTranscript(response.data)
+        } catch (err) {
+            setError('Transcription failed. Please try again.')
+            console.error(err)
+        } finally {
+            setLoading(false)
+        }
+    }
 
-    const changeHandler = (event) => {
-		setSelectedFile(event.target.files[0]);
-		setIsFilePicked(true);
-	};
+    const downloadTxtFile = () => {
+        const element = document.createElement('a')
+        element.href = URL.createObjectURL(new Blob([transcript], { type: 'text/plain' }))
+        const base = selectedFile ? selectedFile.name.replace(/\.[^.]+$/, '') : 'transcript'
+        element.download = `${base}.txt`
+        document.body.appendChild(element)
+        element.click()
+        element.remove()
+    }
 
-	const handleSubmission = async (e) => {
-		e.preventDefault()
-        setLoading(true) 
-		const formData = new FormData();
-		formData.append('File', selectedFile);
-
-		await axios.post('https://server-dot-donald-transcription.uk.r.appspot.com/transcribe', formData)
-			.then((response) => setDownload(response.data))
-        setLoading(false)
-	};
-
-	const downloadTxtFile = () => {
-		const element = document.createElement("a");
-		const file = new Blob([download], {type: 'text/plain'});
-		element.href = URL.createObjectURL(file);
-		element.download = "myFile.txt";
-		document.body.appendChild(element); 
-		element.click();
-	  }
-
-    
-    return ( 
+    return (
         <div>
-            <h1>Donald's Personal Website by Dave!</h1>
-            <p>Upload a file and I will transcribe the audio file for you. You can then download the file.</p>
-            {
-                loading ? 
+            <h1>Audio Transcriber</h1>
+            <p>Upload an audio or video file and get a text transcript you can download.</p>
+
+            {loading &&
                 <div>
-                    <img src={loading_Gif} alt="loading..." />
-                    <p>It is transcribing. It may take up to 5 minutes for 15 minute long audio files.</p>
+                    <img src={loadingGif} alt="loading..." />
+                    <p>Transcribing… a 15-minute recording can take up to 5 minutes.</p>
+                </div>}
+
+            {error && <p role="alert">{error}</p>}
+
+            {transcript && !loading &&
+                <div>
+                    <p>Done! Your transcript is ready.</p>
+                    <button onClick={downloadTxtFile}>Download .txt</button>
+                    <p>You can also transcribe another file.</p>
+                </div>}
+
+            <form onSubmit={handleSubmission}>
+                <input type="file" name="file" accept="audio/*,video/*"
+                       onChange={(e) => setSelectedFile(e.target.files[0])} />
+                <div>
+                    <button type="submit" disabled={loading}>Transcribe</button>
                 </div>
-                : null
-            }
-
-			{
-                download && !loading ? 
-                <div>
-					<p>I finished transcribing. You can download the file now.</p>
-					<button onClick={downloadTxtFile}>Download txt</button>
-					<p>You can also trascribe something else.</p>
-      			</div>
-                : null
-            }
-
-        <div>
-			<input type="file" name="file" onChange={changeHandler} />
-			<div>
-				<button onClick={handleSubmission}>Submit</button>
-			</div>
-		</div>
-
+            </form>
         </div>
-     );
+    )
 }
- 
-export default Upload;
+
+export default Upload

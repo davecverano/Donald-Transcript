@@ -1,70 +1,64 @@
-# Getting Started with Create React App
+# Audio Transcriber
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A web app that turns audio and video recordings into downloadable text transcripts using [OpenAI Whisper](https://github.com/openai/whisper). Upload a file, wait while the server transcribes it, then download the transcript as a `.txt` file.
 
-## Available Scripts
+## How it works
 
-In the project directory, you can run:
+```
+React frontend (App Engine standard) ──POST /transcribe──▶ FastAPI + Whisper (App Engine flex, Docker)
+                                                              │  ffmpeg decodes the upload
+                                                              └─ Whisper "base" model returns the text
+```
 
-### `npm start`
+- The Whisper model is loaded once when the server starts, so each request only pays for transcription.
+- A 15-minute recording takes up to ~5 minutes on a single CPU, so the server runs with a 30-minute request timeout.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Project layout
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```
+src/            React app (upload form, progress state, transcript download)
+server/
+  main.py       FastAPI app with the /transcribe endpoint
+  Dockerfile    Python 3.10 + ffmpeg image
+  app.yaml      App Engine flexible config (6 GB RAM for the model)
+app.yaml        App Engine standard config for the static frontend
+```
 
-### `npm test`
+## Running locally
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Backend
 
-### `npm run build`
+Requires Python 3.9+ and [ffmpeg](https://ffmpeg.org/download.html) on your PATH.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+cd server
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Set `WHISPER_MODEL` to use a different model size (`tiny`, `small`, `medium`…) and `ALLOWED_ORIGINS` to a comma-separated list of frontend URLs.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Frontend
 
-### `npm run eject`
+```bash
+npm install
+echo REACT_APP_API_URL=http://localhost:8000 > .env.local
+npm start
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Tests
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+npm test
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Deployment
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+npm run build && gcloud app deploy          # frontend
+cd server && gcloud app deploy              # API (custom runtime, flex)
+```
 
-## Learn More
+## Tech stack
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+React 18 · Axios · FastAPI · OpenAI Whisper · ffmpeg · Docker · Google App Engine

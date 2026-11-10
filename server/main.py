@@ -1,92 +1,42 @@
-from fastapi import FastAPI, Request, HTTPException, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
+"""Transcription API: accepts an audio/video upload and returns the text, using OpenAI Whisper."""
 import os
-from dotenv import load_dotenv
-import whisper
 import tempfile
 
+import whisper
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+
+MODEL_NAME = os.getenv("WHISPER_MODEL", "base")
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS", "https://donald-transcription.uk.r.appspot.com,http://localhost:3000"
+).split(",")
+
 app = FastAPI()
-
-origins = [
-    "https://donald-transcription.uk.r.appspot.com",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-@app.post('/transcribe')
-async def Transcribe(request: Request):
-
-    request_forms_list = await request.form()
-    form = request_forms_list.getlist('File')[0]
-    file_contents = form.file
-
-    fd, path = tempfile.mkstemp()
-
-    with os.fdopen(fd, 'wb') as fp:
-        file_contents.seek(0)
-        fp.write(file_contents.read())
+# Loading the model takes several seconds, so do it once at startup rather than per request.
+model = whisper.load_model(MODEL_NAME)
 
 
-    model = whisper.load_model("base")
-    result = model.transcribe(path)
-    transcription = result["text"]
+@app.post("/transcribe")
+async def transcribe(request: Request):
+    form = await request.form()
+    uploads = form.getlist("File")
+    if not uploads:
+        raise HTTPException(status_code=400, detail="No file uploaded (expected form field 'File')")
+    upload = uploads[0]
 
-    os.unlink(path)
-
-    return transcription
-
-
-    
-
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    suffix = os.path.splitext(upload.filename or "")[1]
+    fd, path = tempfile.mkstemp(suffix=suffix)
+    try:
+        with os.fdopen(fd, "wb") as fp:
+            fp.write(await upload.read())
+        return model.transcribe(path)["text"]
+    finally:
+        os.unlink(path)
